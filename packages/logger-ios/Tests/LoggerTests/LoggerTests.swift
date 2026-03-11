@@ -49,6 +49,7 @@ struct mLoggerTests {
 
         let content = try readSingleSegmentContent(root: root)
         #expect(content.contains("[I][mLogger]: logger initialized"))
+        #expect(content.contains("[I][mLogger]: logger environment"))
         #expect(content.contains("[E][Network]: request failed"))
         #expect(content.contains("code=500"))
         #expect(content.contains("path=/feed"))
@@ -64,11 +65,9 @@ struct mLoggerTests {
         Logger.flush()
         Logger.shutdown(timeoutMs: 2_000)
 
-        let content = try readSingleSegmentContent(root: root)
-        #expect(content.contains("[I][mLogger]: logger initialized"))
-        #expect(content.contains("storagePath="))
-        #expect(content.contains("minLogLevel=I"))
-        #expect(content.contains("maxDiskBytes="))
+        let lines = try allLogLines(root: root)
+        #expect(lines.contains { $0.contains("[I][mLogger]: logger initialized") && $0.contains("storagePath=") && $0.contains("minLogLevel=I") && $0.contains("maxDiskBytes=") })
+        #expect(lines.contains { $0.contains("[I][mLogger]: logger environment") && $0.contains("platform=") && $0.contains("osVersion=") && $0.contains("locale=") && $0.contains("timezone=") })
     }
 
     @Test("redactedKeys masks sensitive field values before persistence")
@@ -319,8 +318,9 @@ struct mLoggerTests {
         Logger.shutdown(timeoutMs: 2_000)
 
         let lines = try allLogLines(root: root)
-        #expect(lines.count == 1)
+        #expect(lines.count == 2)
         #expect(lines.contains { $0.contains("[I][mLogger]: logger initialized") })
+        #expect(lines.contains { $0.contains("[I][mLogger]: logger environment") })
         #expect(!lines.contains { $0.contains("should drop") })
     }
 
@@ -458,7 +458,7 @@ struct mLoggerTests {
         Logger.shutdown(timeoutMs: 2_000)
 
         let lines = try allLogLines(root: root)
-        let userLines = lines.filter { !$0.contains("[I][mLogger]: logger initialized") }
+        let userLines = lines.filter { !$0.contains("[I][mLogger]: logger initialized") && !$0.contains("[I][mLogger]: logger environment") }
         #expect(userLines.count == workerCount * logsPerWorker)
         #expect(userLines.allSatisfy { $0.contains(": worker message ") })
         #expect(lines.allSatisfy { !$0.contains("\n") })

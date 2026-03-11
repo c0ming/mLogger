@@ -1,3 +1,5 @@
+import Foundation
+
 public enum Logger {
     private static var runtime: LoggerRuntime?
 
@@ -7,14 +9,12 @@ public enum Logger {
         runtime?.taggedLogger(tag: "mLogger").info(
             message: "logger initialized",
             error: nil,
-            fields: [
-                "storagePath": config.storagePath,
-                "minLogLevel": config.minLogLevel.wireName(),
-                "maxDiskBytes": config.maxDiskBytes,
-                "maxSegmentBytes": config.maxSegmentBytes,
-                "flushIntervalMs": config.flushIntervalMs,
-                "bufferSize": config.bufferSize,
-            ]
+            fields: initializationConfigFields(config: config)
+        )
+        runtime?.taggedLogger(tag: "mLogger").info(
+            message: "logger environment",
+            error: nil,
+            fields: initializationEnvironmentFields()
         )
     }
 
@@ -90,5 +90,70 @@ public enum Logger {
 
     public static func fatal(tag: String, message: String, error: Error? = nil, fields: [String: Any?]? = nil) {
         getLogger(tag).fatal(message: message, error: error, fields: fields)
+    }
+
+    private static func initializationConfigFields(config: LoggerConfig) -> [String: Any?] {
+        [
+            "storagePath": config.storagePath,
+            "minLogLevel": config.minLogLevel.wireName(),
+            "maxDiskBytes": config.maxDiskBytes,
+            "maxSegmentBytes": config.maxSegmentBytes,
+            "flushIntervalMs": config.flushIntervalMs,
+            "bufferSize": config.bufferSize,
+        ]
+    }
+
+    private static func initializationEnvironmentFields() -> [String: Any?] {
+        var fields: [String: Any?] = [
+            "platform": platformName(),
+            "osVersion": ProcessInfo.processInfo.operatingSystemVersionString,
+            "locale": Locale.current.identifier,
+            "timezone": TimeZone.current.identifier,
+        ]
+        let processName = ProcessInfo.processInfo.processName
+        if !processName.isEmpty {
+            fields["process"] = processName
+        }
+
+        if let bundleId = Bundle.main.bundleIdentifier, !bundleId.isEmpty {
+            fields["bundleId"] = bundleId
+        }
+        if let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+           !shortVersion.isEmpty {
+            fields["appVersion"] = shortVersion
+        }
+        if let buildVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+           !buildVersion.isEmpty {
+            fields["appBuild"] = buildVersion
+        }
+        if let deviceModel = deviceModelIdentifier(), !deviceModel.isEmpty {
+            fields["deviceModel"] = deviceModel
+        }
+
+        return fields
+    }
+
+    private static func platformName() -> String {
+        #if os(iOS)
+        return "iOS"
+        #elseif os(macOS)
+        return "macOS"
+        #elseif os(tvOS)
+        return "tvOS"
+        #elseif os(watchOS)
+        return "watchOS"
+        #else
+        return "Apple"
+        #endif
+    }
+
+    private static func deviceModelIdentifier() -> String? {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) { ptr in
+                String(validatingUTF8: ptr)
+            }
+        }
     }
 }
