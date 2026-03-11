@@ -5,6 +5,7 @@ import com.codex.logger.LoggerConfig
 import com.codex.logger.TaggedLogger
 import com.codex.logger.CompressionAlgorithm
 import android.os.Looper
+import android.util.Log
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -139,7 +140,7 @@ internal class LoggerRuntime(private val config: LoggerConfig) {
             val line = formatter.format(record)
             buffer.add(line)
             if (config.enableConsoleOutput) {
-                println(line)
+                Log.println(level.androidPriority(), tag, line)
             }
             if (buffer.size >= config.bufferSize) {
                 flushLocked()
@@ -158,11 +159,16 @@ internal class LoggerRuntime(private val config: LoggerConfig) {
         if (!config.enableThreadInfo) {
             return null
         }
-        if (Looper.getMainLooper().thread === Thread.currentThread()) {
+        val currentThread = Thread.currentThread()
+        val mainThread = try {
+            Looper.getMainLooper().thread
+        } catch (_: RuntimeException) {
+            null
+        }
+        if (mainThread === currentThread) {
             return "main"
         }
-        val thread = Thread.currentThread()
-        return thread.name.takeIf { it.isNotBlank() } ?: thread.id.toString()
+        return currentThread.name.takeIf { it.isNotBlank() } ?: currentThread.id.toString()
     }
 
     private fun snapshotFields(input: Map<String, Any?>): Map<String, String> {
@@ -213,4 +219,12 @@ internal class LoggerRuntime(private val config: LoggerConfig) {
         override fun fatal(message: String, error: Throwable?, fields: Map<String, Any?>?) =
             append(LogLevel.FATAL, tag, message, error, fields)
     }
+}
+
+private fun LogLevel.androidPriority(): Int = when (this) {
+    LogLevel.DEBUG -> Log.DEBUG
+    LogLevel.INFO -> Log.INFO
+    LogLevel.WARN -> Log.WARN
+    LogLevel.ERROR -> Log.ERROR
+    LogLevel.FATAL -> Log.ASSERT
 }

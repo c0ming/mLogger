@@ -1,10 +1,15 @@
 import Darwin
 import Foundation
+import os.log
 
 final class LoggerRuntime {
     private let config: LoggerConfig
     private let formatter = LogFormatter()
     private let fileStore: LogFileStore
+    private let osLog = OSLog(
+        subsystem: Bundle.main.bundleIdentifier ?? "mLogger",
+        category: "mLogger"
+    )
     private let queue = DispatchQueue(label: "com.codex.logger.runtime")
     private var timer: DispatchSourceTimer?
     private var buffer: [String] = []
@@ -161,7 +166,7 @@ final class LoggerRuntime {
             let line = self.formatter.format(record)
             self.buffer.append(line)
             if self.config.enableConsoleOutput {
-                print(line)
+                os_log("%{public}@", log: self.osLog, type: level.osLogType, line)
             }
             if self.buffer.count >= self.config.bufferSize {
                 self.flushLocked()
@@ -230,6 +235,23 @@ final class LoggerRuntime {
         return output
     }
 
+}
+
+private extension LogLevel {
+    var osLogType: OSLogType {
+        switch self {
+        case .debug:
+            return .default
+        case .info:
+            return .default
+        case .warn:
+            return .default
+        case .error:
+            return .error
+        case .fatal:
+            return .fault
+        }
+    }
 }
 
 private struct TaggedLoggerImpl: TaggedLogger {

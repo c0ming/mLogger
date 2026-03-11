@@ -46,7 +46,7 @@ internal class LogFileStore(private val config: LoggerConfig) {
 
     private fun currentSegment(): File {
         val segments = segmentFiles()
-        return segments.lastOrNull() ?: File(rootDir, segmentName(1))
+        return segments.lastOrNull() ?: File(rootDir, nextSegmentName())
     }
 
     private fun nextSegment(): File {

@@ -4,6 +4,11 @@
 # Build outputs
 /build/
 /dist/
+**/build/
+/.gradle/
+/.gradle-home/
+**/.gradle/
+**/.gradle-home/
 
 # SwiftPM
 /.swiftpm/

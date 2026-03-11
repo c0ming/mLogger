@@ -92,7 +92,8 @@ class LoggerBehaviorTest {
             Logger.shutdown()
 
             val content = readSingleSegmentContent(root)
-            assertTrue(content.contains("[thread="))
+            assertTrue(content.contains("][Network]: request started"))
+            assertFalse(content.contains("[thread="))
         }
     }
 
@@ -105,7 +106,7 @@ class LoggerBehaviorTest {
 
             val content = waitForSegmentContent(root)
             Logger.shutdown()
-            assertTrue(content.contains("[INFO][Storage]: cache hit"))
+            assertTrue(content.contains("[I][Storage]: cache hit"))
         }
     }
 
@@ -118,7 +119,7 @@ class LoggerBehaviorTest {
 
             val content = waitForSegmentContent(root)
             Logger.shutdown()
-            assertTrue(content.contains("[INFO][Storage]: scheduled flush"))
+            assertTrue(content.contains("[I][Storage]: scheduled flush"))
         }
     }
 
@@ -174,7 +175,9 @@ class LoggerBehaviorTest {
             Logger.flush()
             Logger.shutdown()
 
-            assertTrue(segmentFiles(root).isEmpty())
+            val lines = allLogLines(root)
+            assertEquals(2, lines.size)
+            assertTrue(lines.all { it.contains("[I][mLogger]: logger ") })
         }
     }
 
@@ -232,7 +235,7 @@ class LoggerBehaviorTest {
 
             assertTrue(success)
             val restored = InflaterInputStream(output.inputStream()).bufferedReader().readText()
-            assertTrue(restored.contains("[ERROR][Export]: compress this"))
+            assertTrue(restored.contains("[E][Export]: compress this"))
             assertTrue(restored.contains("path=/export"))
         }
     }
@@ -276,8 +279,9 @@ class LoggerBehaviorTest {
             Logger.shutdown()
 
             val lines = allLogLines(root)
-            assertEquals(workerCount * logsPerWorker, lines.size)
-            assertTrue(lines.all { it.contains(": worker message ") })
+            val userLines = lines.filterNot { it.contains("[mLogger]: logger initialized") || it.contains("[mLogger]: logger environment") }
+            assertEquals(workerCount * logsPerWorker, userLines.size)
+            assertTrue(userLines.all { it.contains(": worker message ") })
         }
     }
 
@@ -322,12 +326,14 @@ class LoggerBehaviorTest {
 
             val files = segmentFiles(root)
             val totalBytes = files.sumOf { it.length() }
-            val lines = allLogLines(root)
+            val lines = allLogLines(root).filterNot {
+                it.contains("[mLogger]: logger initialized") || it.contains("[mLogger]: logger environment")
+            }
 
             assertTrue(files.size > 1)
             assertTrue(totalBytes <= maxDiskBytes)
             assertTrue(lines.isNotEmpty())
-            assertTrue(lines.all { it.contains("[WARN][Rotate") })
+            assertTrue(lines.all { it.contains("[W][Rotate") })
         }
     }
 }
