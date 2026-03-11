@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Build outputs
+/build/
+/dist/
+
+# SwiftPM
+/.swiftpm/
+**/.build/
+
+# Xcode
+DerivedData/
+*.xcresult
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Editors
+.idea/
+.vscode/
